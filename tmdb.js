@@ -10,14 +10,14 @@ var WidgetMetadata = {
   title: "TMDB资源模块",
   description: "只保留自己用到的",
   author: "curator",
-  version: "0.0.2",
+  version: "0.0.5",
   requiredVersion: "0.0.1",
 
   modules: [
-    { title: "🔥 TMDB 热门电影", functionName: "tmdbPopularMovies", cacheDuration: 1800, params: [ { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
-    { title: "🔥 TMDB 热门剧集", functionName: "tmdbPopularTV", cacheDuration: 1800, params: [ { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
-    { title: "⭐ TMDB 高分内容", functionName: "tmdbTopRated", cacheDuration: 21600, params: [ { name: "type", title: "类型", type: "enumeration", enumOptions: [ { title: "电影", value: "movie" }, { title: "剧集", value: "tv" } ], value: "movie" }, { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
-    { title: "📺 TMDB 播出平台", functionName: "tmdbDiscoverByNetwork", cacheDuration: 21600, params: [ 
+    { title: "TMDB 热门电影", functionName: "tmdbPopularMovies", cacheDuration: 1800, params: [ { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
+    { title: "TMDB 热门剧集", functionName: "tmdbPopularTV", cacheDuration: 1800, params: [ { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
+    { title: "TMDB 高分内容", functionName: "tmdbTopRated", cacheDuration: 21600, params: [ { name: "type", title: "类型", type: "enumeration", enumOptions: [ { title: "电影", value: "movie" }, { title: "剧集", value: "tv" } ], value: "movie" }, { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
+    { title: "TMDB 播出平台", functionName: "tmdbDiscoverByNetwork", cacheDuration: 21600, params: [ 
       { name: "with_networks", title: "播出平台", type: "enumeration", value: "", enumOptions: [
         { title: "全部平台", value: "" },
         { title: "Netflix", value: "213" },
