@@ -1,4 +1,7 @@
-
+// =============================
+// ForwardWidgets - TMDB 完整版（带 Key，Forward 完全兼容）
+// ✅ 直接导入 Forward 可用
+// =============================
 
 // ⚠️ 请替换为你自己的 TMDB API Key
 const TMDB_API_KEY = "ae39b54fe21d657c5f535174b11f8a82";
@@ -12,8 +15,8 @@ var WidgetMetadata = {
   id: "tmdb_full_widget",
   title: "TMDB Full",
   description: "热门电影 / 热门剧集 / 高分 / 平台 / 出品公司",
-  author: "matata",
-  version: "1.0.0",
+  author: "ChatGPT",
+  version: "1.1.0",
   requiredVersion: "0.0.1",
 
   modules: [
@@ -26,13 +29,24 @@ var WidgetMetadata = {
 };
 
 // =============================
+// 拼接 URL，兼容 Forward
+// =============================
+function buildUrl(endpoint, params) {
+  let url = BASE_URL + endpoint + '?api_key=' + TMDB_API_KEY;
+  for (let k in params) {
+    if (params[k] !== undefined && params[k] !== '') {
+      url += `&${k}=${encodeURIComponent(params[k])}`;
+    }
+  }
+  return url;
+}
+
+// =============================
 // 通用请求函数
 // =============================
 async function fetchTMDB(endpoint, params = {}) {
-  const url = new URL(BASE_URL + endpoint);
-  url.searchParams.append("api_key", TMDB_API_KEY);
-  Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== "") { url.searchParams.append(k, v); } });
-  const res = await Widget.http.get(url.toString());
+  const url = buildUrl(endpoint, params);
+  const res = await Widget.http.get(url);
   const json = JSON.parse(res.data);
   return json.results || [];
 }
