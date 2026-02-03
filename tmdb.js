@@ -8,16 +8,15 @@ const IMAGE = "https://image.tmdb.org/t/p/w500";
 var WidgetMetadata = {
   id: "curator-tmdb-widget",
   title: "TMDB资源",
-  description: "按自己喜好做",
+  description: "按自己喜好抓取最新资源",
   author: "curator",
-  version: "2.3.0",
+  version: "2.0.0",
   requiredVersion: "0.0.1",
-
   modules: [
-    // 1️⃣ 播出平台（国内外，电影+剧集）
+    // 1️⃣ 播出平台（国内外主要平台）- 全部平台抓当天及以前电影+剧集
     { 
-      title: "TMDB 播出平台（全球）", 
-      functionName: "tmdbDiscoverByPlatform", 
+      title: "TMDB 播出平台（国内外）", 
+      functionName: "tmdbDiscoverByNetworkAll", 
       cacheDuration: 60, 
       params: [ 
         { name: "with_networks", title: "播出平台", type: "enumeration", value: "", enumOptions: [
@@ -156,7 +155,7 @@ async function fetchTMDB(endpoint, params = {}) {
 // =============================
 function formatItems(items, mediaType) {
   return items
-    .filter(i => i.vote_average >= 4 && i.poster_path) // 评分≥4 & 必须有封面
+    .filter(i => i.vote_average >= 4 && i.poster_path)
     .map(i => ({
       id: i.id.toString(),
       type: "tmdb",
@@ -193,35 +192,43 @@ async function tmdbTopRated(params) {
   return formatItems(items, type); 
 }
 
-// 播出平台（电影+剧集）
-async function tmdbDiscoverByPlatform(params) {
+// 播出平台 - 全部平台抓当天及以前电影+剧集
+async function tmdbDiscoverByNetworkAll(params) {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  // 强制限制首播/上映日期不晚于今天
-  params['first_air_date.lte'] = todayStr;
-  params['primary_release_date.lte'] = todayStr;
-
-  let page = params.page || 1;
-  let allItems = [];
-  const MAX_PAGES = 5; // 可调
-
-  while (page <= MAX_PAGES) {
-    params.page = page;
-    // 先抓剧集
-    const tvItems = await fetchTMDB("/discover/tv", params);
-    // 再抓电影
-    const movieItems = await fetchTMDB("/discover/movie", params);
-    const items = tvItems.concat(movieItems);
-    if (!items || items.length === 0) break;
-    allItems = allItems.concat(items);
-    page++;
+  let networks = [];
+  if (!params.with_networks) {
+    // 全部平台数组
+    networks = ["213","2739","2552","49","1024","453","332","2007","1330","1419","1605","1631","48"];
+  } else {
+    networks = [params.with_networks];
   }
 
-  return formatItems(allItems);
+  let allItems = [];
+  for (let net of networks) {
+    let page = 1;
+    const MAX_PAGES = 3;
+    while (page <= MAX_PAGES) {
+      params.with_networks = net;
+      params.page = page;
+      params['first_air_date.lte'] = todayStr;
+      const tvItems = await fetchTMDB("/discover/tv", params);
+      const movieItems = await fetchTMDB("/discover/movie", params);
+      allItems = allItems.concat(tvItems, movieItems);
+      page++;
+    }
+  }
+
+  // 去重
+  const unique = {};
+  allItems.forEach(i => { unique[i.id] = i; });
+  const uniqueItems = Object.values(unique);
+
+  return formatItems(uniqueItems);
 }
 
 // 出品公司
