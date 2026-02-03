@@ -1,23 +1,16 @@
-// =============================
-// ForwardWidgets - TMDB 完全开放版（所有平台最新剧集，显示今天及以前）
-// =============================
-
-// TMDB API Key 和备注
-// 用户: curator
-// TMDB_API_KEY: ae39b54fe21d657c5f535174b11f8a82
 const TMDB_API_KEY = "ae39b54fe21d657c5f535174b11f8a82";
 const BASE_URL = "https://api.themoviedb.org/3";
 const IMAGE = "https://image.tmdb.org/t/p/w500";
 
 // =============================
-// Widget Metadata
+// Widget curator
 // =============================
 var WidgetMetadata = {
   id: "tmdb_full_open_widget",
-  title: "TMDB Full Open",
-  description: "热门电影 / 热门剧集 / 高分 / 平台 / 出品公司 - 不屏蔽任何内容，显示今天及以前首播的剧集",
-  author: "ChatGPT",
-  version: "1.7.3",
+  title: "TMDB资源模块",
+  description: "只保留自己用到的",
+  author: "curator",
+  version: "0.0.1",
   requiredVersion: "0.0.1",
 
   modules: [
