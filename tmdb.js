@@ -8,16 +8,54 @@ const IMAGE = "https://image.tmdb.org/t/p/w500";
 var WidgetMetadata = {
   id: "curator-tmdb-widget",
   title: "TMDB资源",
-  description: "按自己喜好抓取最新资源",
+  description: "全球最新电影和剧集，自定义筛选",
   author: "curator",
-  version: "2.0.0",
+  version: "2.4.0",
   requiredVersion: "0.0.1",
+
   modules: [
-    // 1️⃣ 播出平台（国内外主要平台）- 全部平台抓当天及以前电影+剧集
+    // 1️⃣ 热门剧集
+    { 
+      title: "TMDB 热门剧集", 
+      functionName: "tmdbPopularTV", 
+      cacheDuration: 1800, 
+      params: [ 
+        { name: "language", title: "语言", type: "language", value: "zh-CN" },
+        { name: "page", title: "页码", type: "page" }
+      ] 
+    },
+
+    // 2️⃣ 热门电影
+    { 
+      title: "TMDB 热门电影", 
+      functionName: "tmdbPopularMovies", 
+      cacheDuration: 1800, 
+      params: [ 
+        { name: "language", title: "语言", type: "language", value: "zh-CN" },
+        { name: "page", title: "页码", type: "page" }
+      ] 
+    },
+
+    // 3️⃣ 高分内容
+    { 
+      title: "TMDB 高分内容", 
+      functionName: "tmdbTopRated", 
+      cacheDuration: 21600, 
+      params: [ 
+        { name: "type", title: "类型", type: "enumeration", enumOptions: [ 
+          { title: "电影", value: "movie" }, 
+          { title: "剧集", value: "tv" } 
+        ], value: "movie" }, 
+        { name: "language", title: "语言", type: "language", value: "zh-CN" }, 
+        { name: "page", title: "页码", type: "page" } 
+      ] 
+    },
+
+    // 4️⃣ 播出平台（国内外全部）
     { 
       title: "TMDB 播出平台（国内外）", 
-      functionName: "tmdbDiscoverByNetworkAll", 
-      cacheDuration: 60, 
+      functionName: "tmdbDiscoverGlobal", 
+      cacheDuration: 60, // 60秒刷新
       params: [ 
         { name: "with_networks", title: "播出平台", type: "enumeration", value: "", enumOptions: [
           { title: "全部平台", value: "" },
@@ -46,44 +84,7 @@ var WidgetMetadata = {
       ] 
     },
 
-    // 2️⃣ 热门剧集
-    { 
-      title: "TMDB 热门剧集", 
-      functionName: "tmdbPopularTV", 
-      cacheDuration: 1800, 
-      params: [ 
-        { name: "language", title: "语言", type: "language", value: "zh-CN" },
-        { name: "page", title: "页码", type: "page" }
-      ] 
-    },
-
-    // 3️⃣ 热门电影
-    { 
-      title: "TMDB 热门电影", 
-      functionName: "tmdbPopularMovies", 
-      cacheDuration: 1800, 
-      params: [ 
-        { name: "language", title: "语言", type: "language", value: "zh-CN" },
-        { name: "page", title: "页码", type: "page" }
-      ] 
-    },
-
-    // 4️⃣ 高分内容
-    { 
-      title: "TMDB 高分内容", 
-      functionName: "tmdbTopRated", 
-      cacheDuration: 21600, 
-      params: [ 
-        { name: "type", title: "类型", type: "enumeration", enumOptions: [ 
-          { title: "电影", value: "movie" }, 
-          { title: "剧集", value: "tv" } 
-        ], value: "movie" }, 
-        { name: "language", title: "语言", type: "language", value: "zh-CN" }, 
-        { name: "page", title: "页码", type: "page" } 
-      ] 
-    },
-
-    // 5️⃣ 出品公司
+    // 5️⃣ 出品公司（国内外，中外公司中文显示）
     { 
       title: "TMDB 出品公司", 
       functionName: "tmdbDiscoverByCompany", 
@@ -128,7 +129,7 @@ var WidgetMetadata = {
 };
 
 // =============================
-// 拼接 URL
+// 通用请求函数
 // =============================
 function buildUrl(endpoint, params) {
   let url = BASE_URL + endpoint + '?api_key=' + TMDB_API_KEY;
@@ -140,9 +141,6 @@ function buildUrl(endpoint, params) {
   return url;
 }
 
-// =============================
-// 通用请求函数
-// =============================
 async function fetchTMDB(endpoint, params = {}) {
   const url = buildUrl(endpoint, params);
   const res = await Widget.http.get(url);
@@ -172,63 +170,54 @@ function formatItems(items, mediaType) {
 // =============================
 // 模块实现函数
 // =============================
-
-// 热门电影
 async function tmdbPopularMovies(params) { 
   const items = await fetchTMDB("/movie/popular", params); 
   return formatItems(items, "movie"); 
 }
 
-// 热门剧集
 async function tmdbPopularTV(params) { 
   const items = await fetchTMDB("/tv/popular", params); 
   return formatItems(items, "tv"); 
 }
 
-// 高分内容
 async function tmdbTopRated(params) { 
   const type = params.type || "movie"; 
   const items = await fetchTMDB(`/${type}/top_rated`, params); 
   return formatItems(items, type); 
 }
 
-// 播出平台 - 全部平台抓当天及以前电影+剧集
-async function tmdbDiscoverByNetworkAll(params) {
+// 全局最新资源（电影 + 剧集，今天及以前，全部平台）
+async function tmdbDiscoverGlobal(params) {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  let networks = [];
-  if (!params.with_networks) {
-    // 全部平台数组
-    networks = ["213","2739","2552","49","1024","453","332","2007","1330","1419","1605","1631","48"];
-  } else {
-    networks = [params.with_networks];
-  }
-
+  let page = 1;
   let allItems = [];
-  for (let net of networks) {
-    let page = 1;
-    const MAX_PAGES = 3;
+  const MAX_PAGES = 5; // 最多抓取5页，可调整
+
+  // 电影 + 剧集
+  const endpoints = ["/discover/movie", "/discover/tv"];
+  
+  for (const ep of endpoints) {
     while (page <= MAX_PAGES) {
-      params.with_networks = net;
       params.page = page;
-      params['first_air_date.lte'] = todayStr;
-      const tvItems = await fetchTMDB("/discover/tv", params);
-      const movieItems = await fetchTMDB("/discover/movie", params);
-      allItems = allItems.concat(tvItems, movieItems);
+      // 强制截止日期
+      if (ep.includes("/movie")) params['release_date.lte'] = todayStr;
+      else params['first_air_date.lte'] = todayStr;
+
+      const items = await fetchTMDB(ep, params);
+      if (!items || items.length === 0) break;
+
+      allItems = allItems.concat(items);
       page++;
     }
+    page = 1; // 重置分页
   }
 
-  // 去重
-  const unique = {};
-  allItems.forEach(i => { unique[i.id] = i; });
-  const uniqueItems = Object.values(unique);
-
-  return formatItems(uniqueItems);
+  return formatItems(allItems);
 }
 
 // 出品公司
