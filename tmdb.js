@@ -3,22 +3,22 @@ const BASE_URL = "https://api.themoviedb.org/3";
 const IMAGE = "https://image.tmdb.org/t/p/w500";
 
 // =============================
-// Widget Metadata
+// Widget curator
 // =============================
 var WidgetMetadata = {
   id: "curator-tmdb-widget",
   title: "TMDB资源",
   description: "按自己喜好的做",
   author: "curator",
-  version: "2.0.0",
+  version: "2.1.0",
   requiredVersion: "0.0.1",
 
   modules: [
-    // 1️⃣ 最新资源（电影+剧集，全球当天及以前）
+    // 1️⃣ 最新资源（电影+剧集，全部平台，当天及以前）
     { 
       title: "TMDB 最新资源", 
       functionName: "tmdbDiscoverLatest", 
-      cacheDuration: 60, // 每60秒刷新
+      cacheDuration: 60, 
       params: [ 
         { name: "with_networks", title: "播出平台", type: "enumeration", value: "", enumOptions: [
           { title: "全部平台", value: "" },
@@ -35,12 +35,6 @@ var WidgetMetadata = {
           { title: "Bilibili", value: "1605" },
           { title: "芒果", value: "1631" },
           { title: "TVB", value: "48" }
-        ] },
-        { name: "sort_by", title: "排序方式", type: "enumeration", value: "first_air_date.desc", enumOptions: [
-          { title: "最新上映↓", value: "first_air_date.desc" },
-          { title: "上映时间↑", value: "first_air_date.asc" },
-          { title: "人气最高", value: "popularity.desc" },
-          { title: "评分最高", value: "vote_average.desc" }
         ] },
         { name: "language", title: "语言", type: "language", value: "zh-CN" },
         { name: "page", title: "页码", type: "page" }
@@ -152,7 +146,7 @@ async function fetchTMDB(endpoint, params = {}) {
 }
 
 // =============================
-// 格式化 + 过滤
+// 格式化 + 过滤评分<4 & 无封面
 // =============================
 function formatItems(items, mediaType) {
   return items
@@ -201,32 +195,39 @@ async function tmdbDiscoverLatest(params) {
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  params['first_air_date.lte'] = todayStr;
-  params['release_date.lte'] = todayStr;
+  const tvParams = { ...params, 'first_air_date.lte': todayStr, page: 1 };
+  const movieParams = { ...params, 'release_date.lte': todayStr, page: 1 };
 
-  let page = params.page || 1;
-  const MAX_PAGES = 5;
   let allTV = [], allMovies = [];
+  const MAX_PAGES = 10;
 
-  while (page <= MAX_PAGES) {
-    params.page = page;
-    const tvItems = await fetchTMDB("/discover/tv", params);
-    const movieItems = await fetchTMDB("/discover/movie", params);
-
-    if ((!tvItems || tvItems.length === 0) && (!movieItems || movieItems.length === 0)) break;
-
-    allTV = allTV.concat(tvItems);
-    allMovies = allMovies.concat(movieItems);
-    page++;
+  while (tvParams.page <= MAX_PAGES) {
+    const items = await fetchTMDB("/discover/tv", tvParams);
+    if (!items || items.length === 0) break;
+    allTV = allTV.concat(items);
+    tvParams.page++;
   }
 
-  const combined = allTV.concat(allMovies).sort((a, b) => {
-    const dateA = new Date(a.first_air_date || a.release_date);
-    const dateB = new Date(b.first_air_date || b.release_date);
-    return dateB - dateA;
-  });
+  while (movieParams.page <= MAX_PAGES) {
+    const items = await fetchTMDB("/discover/movie", movieParams);
+    if (!items || items.length === 0) break;
+    allMovies = allMovies.concat(items);
+    movieParams.page++;
+  }
 
-  return formatItems(combined);
+  const combined = [...allTV, ...allMovies].filter(i => i.vote_average >= 4 && i.poster_path);
+
+  return combined.map(i => ({
+    id: i.id.toString(),
+    type: "tmdb",
+    mediaType: i.title ? "movie" : "tv",
+    title: i.title || i.name,
+    posterPath: IMAGE + i.poster_path,
+    backdropPath: i.backdrop_path ? IMAGE + i.backdrop_path : undefined,
+    releaseDate: i.release_date || i.first_air_date,
+    rating: i.vote_average,
+    description: i.overview
+  }));
 }
 
 // 出品公司
