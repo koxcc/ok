@@ -3,45 +3,38 @@ const BASE_URL = "https://api.themoviedb.org/3";
 const IMAGE = "https://image.tmdb.org/t/p/w500";
 
 // =============================
-// Widget curator
-// =============================
 var WidgetMetadata = {
   id: "curator-tmdb-widget",
   title: "TMDB资源",
-  description: "按自己喜好的做",
+  description: "按自己喜好做",
   author: "curator",
-  version: "2.1.0",
+  version: "2.2.0",
   requiredVersion: "0.0.1",
 
   modules: [
-    // 1️⃣ 最新资源（电影+剧集，全部平台，当天及以前）
+    // 1️⃣ 全球最新剧集
     { 
-      title: "TMDB 最新资源", 
-      functionName: "tmdbDiscoverLatest", 
-      cacheDuration: 60, 
+      title: "TMDB 全球最新剧集", 
+      functionName: "tmdbLatestTV", 
+      cacheDuration: 60, // 60秒刷新
       params: [ 
-        { name: "with_networks", title: "播出平台", type: "enumeration", value: "", enumOptions: [
-          { title: "全部平台", value: "" },
-          { title: "Netflix", value: "213" },
-          { title: "Disney+", value: "2739" },
-          { title: "Apple TV+", value: "2552" },
-          { title: "HBO", value: "49" },
-          { title: "Amazon", value: "1024" },
-          { title: "Hulu", value: "453" },
-          { title: "BBC", value: "332" },
-          { title: "腾讯", value: "2007" },
-          { title: "爱奇艺", value: "1330" },
-          { title: "优酷", value: "1419" },
-          { title: "Bilibili", value: "1605" },
-          { title: "芒果", value: "1631" },
-          { title: "TVB", value: "48" }
-        ] },
         { name: "language", title: "语言", type: "language", value: "zh-CN" },
         { name: "page", title: "页码", type: "page" }
       ] 
     },
 
-    // 2️⃣ 热门剧集
+    // 2️⃣ 全球最新电影
+    { 
+      title: "TMDB 全球最新电影", 
+      functionName: "tmdbLatestMovie", 
+      cacheDuration: 60, 
+      params: [ 
+        { name: "language", title: "语言", type: "language", value: "zh-CN" },
+        { name: "page", title: "页码", type: "page" }
+      ] 
+    },
+
+    // 3️⃣ 热门剧集
     { 
       title: "TMDB 热门剧集", 
       functionName: "tmdbPopularTV", 
@@ -52,7 +45,7 @@ var WidgetMetadata = {
       ] 
     },
 
-    // 3️⃣ 热门电影
+    // 4️⃣ 热门电影
     { 
       title: "TMDB 热门电影", 
       functionName: "tmdbPopularMovies", 
@@ -63,7 +56,7 @@ var WidgetMetadata = {
       ] 
     },
 
-    // 4️⃣ 高分内容
+    // 5️⃣ 高分内容
     { 
       title: "TMDB 高分内容", 
       functionName: "tmdbTopRated", 
@@ -78,7 +71,7 @@ var WidgetMetadata = {
       ] 
     },
 
-    // 5️⃣ 出品公司
+    // 6️⃣ 出品公司
     { 
       title: "TMDB 出品公司", 
       functionName: "tmdbDiscoverByCompany", 
@@ -146,7 +139,7 @@ async function fetchTMDB(endpoint, params = {}) {
 }
 
 // =============================
-// 格式化 + 过滤评分<4 & 无封面
+// 格式化 + 过滤
 // =============================
 function formatItems(items, mediaType) {
   return items
@@ -187,47 +180,54 @@ async function tmdbTopRated(params) {
   return formatItems(items, type); 
 }
 
-// 最新资源（电影+剧集，全球当天及以前）
-async function tmdbDiscoverLatest(params) {
+// 全球最新剧集
+async function tmdbLatestTV(params) {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  const tvParams = { ...params, 'first_air_date.lte': todayStr, page: 1 };
-  const movieParams = { ...params, 'release_date.lte': todayStr, page: 1 };
+  params['first_air_date.lte'] = todayStr;
+  let page = 1;
+  let allItems = [];
+  const MAX_PAGES = 5;
 
-  let allTV = [], allMovies = [];
-  const MAX_PAGES = 10;
-
-  while (tvParams.page <= MAX_PAGES) {
-    const items = await fetchTMDB("/discover/tv", tvParams);
+  while (page <= MAX_PAGES) {
+    params.page = page;
+    const items = await fetchTMDB("/discover/tv", params);
     if (!items || items.length === 0) break;
-    allTV = allTV.concat(items);
-    tvParams.page++;
+    allItems = allItems.concat(items);
+    page++;
   }
 
-  while (movieParams.page <= MAX_PAGES) {
-    const items = await fetchTMDB("/discover/movie", movieParams);
+  allItems.sort((a,b) => new Date(b.first_air_date) - new Date(a.first_air_date));
+  return formatItems(allItems, "tv");
+}
+
+// 全球最新电影
+async function tmdbLatestMovie(params) {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  params['release_date.lte'] = todayStr;
+  let page = 1;
+  let allItems = [];
+  const MAX_PAGES = 5;
+
+  while (page <= MAX_PAGES) {
+    params.page = page;
+    const items = await fetchTMDB("/discover/movie", params);
     if (!items || items.length === 0) break;
-    allMovies = allMovies.concat(items);
-    movieParams.page++;
+    allItems = allItems.concat(items);
+    page++;
   }
 
-  const combined = [...allTV, ...allMovies].filter(i => i.vote_average >= 4 && i.poster_path);
-
-  return combined.map(i => ({
-    id: i.id.toString(),
-    type: "tmdb",
-    mediaType: i.title ? "movie" : "tv",
-    title: i.title || i.name,
-    posterPath: IMAGE + i.poster_path,
-    backdropPath: i.backdrop_path ? IMAGE + i.backdrop_path : undefined,
-    releaseDate: i.release_date || i.first_air_date,
-    rating: i.vote_average,
-    description: i.overview
-  }));
+  allItems.sort((a,b) => new Date(b.release_date) - new Date(a.release_date));
+  return formatItems(allItems, "movie");
 }
 
 // 出品公司
