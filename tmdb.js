@@ -8,7 +8,7 @@ const IMAGE = "https://image.tmdb.org/t/p/w500";
 var WidgetMetadata = {
   id: "tmdb_full_open_widget",
   title: "TMDB资源模块",
-  description: "趋势、热榜、平台一站式”,
+  description: "趋势、热榜、平台一站式的资源模块",
   author: "Bai",
   version: "0.0.8",
   requiredVersion: "0.0.1",
