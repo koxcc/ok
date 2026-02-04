@@ -3,14 +3,24 @@ const BASE_URL = "https://api.themoviedb.org/3";
 const IMAGE = "https://image.tmdb.org/t/p/w500";
 
 // =============================
-// Widget Metadata
+// TMDB 类型映射
+// =============================
+const GENRES = {
+  28: "动作", 12: "冒险", 16: "动画", 35: "喜剧", 80: "犯罪",
+  99: "纪录片", 18: "剧情", 10751: "家庭", 14: "奇幻", 36: "历史",
+  27: "恐怖", 10402: "音乐", 9648: "悬疑", 10749: "爱情", 878: "科幻",
+  10770: "电视电影", 53: "惊悚", 10752: "战争", 37: "西部"
+};
+
+// =============================
+// Widget Bai
 // =============================
 var WidgetMetadata = {
   id: "tmdb_full_open_widget",
   title: "TMDB资源模块",
   description: "趋势热门平台一站式",
   author: "Bai",
-  version: "0.2.0",
+  version: "0.3.0",
   requiredVersion: "0.0.1",
   modules: [
     { title: "今日趋势", functionName: "tmdbTrendingToday", cacheDuration: 1800, params: [
@@ -100,7 +110,7 @@ var WidgetMetadata = {
 // =============================
 // URL 构建
 // =============================
-function buildUrl(endpoint, params) {
+function buildUrl(endpoint, params){
   let url = BASE_URL + endpoint + "?api_key=" + TMDB_API_KEY;
   const today = new Date();
   const yyyy = today.getFullYear();
@@ -119,7 +129,7 @@ function buildUrl(endpoint, params) {
 // =============================
 // 请求 TMDB
 // =============================
-async function fetchTMDB(endpoint, params={}) {
+async function fetchTMDB(endpoint, params={}){
   const url = buildUrl(endpoint, params);
   const res = await Widget.http.get(url);
   const json = res.data;
@@ -127,7 +137,7 @@ async function fetchTMDB(endpoint, params={}) {
 }
 
 // =============================
-// 数据格式化
+// 数据格式化 + 题材类型
 // =============================
 function formatItems(items, mediaType){
   if(!Array.isArray(items)) return [];
@@ -141,6 +151,10 @@ function formatItems(items, mediaType){
         case "person": title = i.name || i.original_name || ""; break;
         default: title = i.title || i.name || i.original_title || i.original_name || "";
       }
+
+      let genres = [];
+      if(Array.isArray(i.genre_ids)) genres = i.genre_ids.map(id=>GENRES[id]).filter(Boolean);
+
       return {
         id: i.id?.toString() || "",
         type: "tmdb",
@@ -150,7 +164,8 @@ function formatItems(items, mediaType){
         backdropPath: i.backdrop_path ? IMAGE + i.backdrop_path : undefined,
         releaseDate: i.release_date || i.first_air_date,
         rating: i.vote_average || 0,
-        description: i.overview || ""
+        description: i.overview || "",
+        genres: genres.join(" / ") // ✅ 中文题材类型
       };
     });
 }
