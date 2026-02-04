@@ -1,4 +1,3 @@
-
 const TMDB_API_KEY = "ae39b54fe21d657c5f535174b11f8a82";
 const BASE_URL = "https://api.themoviedb.org/3";
 const IMAGE = "https://image.tmdb.org/t/p/w500";
@@ -11,48 +10,10 @@ var WidgetMetadata = {
   title: "TMDB资源模块",
   description: "",
   author: "Bai",
-version: "0.0.7",
+version: "0.0.8",
   requiredVersion: "0.0.1",
 
   modules: [
-
-    { 
-  title: "🔥 TMDB 今日更新",
-  functionName: "tmdbAiringToday",
-  cacheDuration: 900,
-  params: [
-    { name: "language", title: "语言", type: "language", value: "zh-CN" },
-    { name: "page", title: "页码", type: "page" }
-  ]
-},
-
-{ 
-  title: "🔥 TMDB 今日趋势",
-  functionName: "tmdbTrendingToday",
-  cacheDuration: 900,
-  params: [
-    { name: "language", title: "语言", type: "language", value: "zh-CN" }
-  ]
-},
-
-{ 
-  title: "🔥 TMDB 本周趋势",
-  functionName: "tmdbTrendingWeek",
-  cacheDuration: 900,
-  params: [
-    { name: "language", title: "语言", type: "language", value: "zh-CN" }
-  ]
-},
-
-{
-  title: "🚀 TMDB 即将上映",
-  functionName: "tmdbUpcomingBlockbusters",
-  cacheDuration: 21600,
-  params: [
-    { name: "language", title: "语言", type: "language", value: "zh-CN" },
-    { name: "page", title: "页码", type: "page" }
-  ]
-},
     { title: "TMDB 热门电影", functionName: "tmdbPopularMovies", cacheDuration: 1800, params: [ { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
     { title: "TMDB 热门剧集", functionName: "tmdbPopularTV", cacheDuration: 1800, params: [ { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
     { title: "TMDB 高分内容", functionName: "tmdbTopRated", cacheDuration: 21600, params: [ { name: "type", title: "类型", type: "enumeration", enumOptions: [ { title: "电影", value: "movie" }, { title: "剧集", value: "tv" } ], value: "movie" }, { name: "language", title: "语言", type: "language", value: "zh-CN" }, { name: "page", title: "页码", type: "page" } ] },
