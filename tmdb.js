@@ -10,7 +10,7 @@ var WidgetMetadata = {
   title: "TMDB资源模块",
   description: "",
   author: "Bai",
-  version: "0.0.8",
+  version: "0.1.0",
   requiredVersion: "0.0.1",
 
   modules: [
@@ -138,35 +138,32 @@ async function fetchTMDB(endpoint, params = {}) {
 }
 
 // =============================
-// 数据格式化函数（自适应中文标题 + 人物显示姓名）
+// 数据格式化（中文优先 -> 英文 -> 原始片名）
 // =============================
 function formatItems(items, mediaType) {
   return items
     .filter(i => i.poster_path && i.poster_path.trim() !== "")
     .map(i => {
       let title = '';
-
       switch (i.media_type) {
         case 'movie':
-          title = (i.title && i.title !== i.original_title) ? i.title : i.original_title;
+          title = i.title || i.original_title || i.original_title || "";
           break;
         case 'tv':
-          title = (i.name && i.name !== i.original_name) ? i.name : i.original_name;
+          title = i.name || i.original_name || i.original_name || "";
           break;
         case 'person':
-          title = i.name || i.original_name;
+          title = i.name || i.original_name || i.original_name || "";
           break;
         default:
-          title = i.title || i.name || i.original_title || i.original_name;
+          title = i.title || i.name || i.original_title || i.original_name || "";
       }
-
-      title = title || "未知";
 
       return {
         id: i.id.toString(),
         type: "tmdb",
         mediaType: i.media_type === "person" ? "person" : (mediaType || (i.title ? "movie" : "tv")),
-        title: title,
+        title,
         posterPath: IMAGE + i.poster_path,
         backdropPath: i.backdrop_path ? IMAGE + i.backdrop_path : undefined,
         releaseDate: i.release_date || i.first_air_date,
@@ -177,68 +174,93 @@ function formatItems(items, mediaType) {
 }
 
 // =============================
-// 模块实现函数
+// 模块实现函数 + 渲染
 // =============================
-async function tmdbPopularMovies(params) { 
-  const items = await fetchTMDB("/movie/popular", params); 
-  return formatItems(items, "movie"); 
-}
-
-async function tmdbPopularTV(params) { 
-  const items = await fetchTMDB("/tv/popular", params); 
-  return formatItems(items, "tv"); 
-}
-
-async function tmdbTopRated(params) { 
-  const type = params.type || "movie"; 
-  const items = await fetchTMDB(`/${type}/top_rated`, params); 
-  return formatItems(items, type); 
-}
-
-async function tmdbDiscoverByNetwork(params) { 
-  const items = await fetchTMDB("/discover/tv", params); 
-  return formatItems(items, "tv"); 
-}
-
+async function tmdbPopularMovies(params) { return renderAndReturn(await fetchTMDB("/movie/popular", params), "movie"); }
+async function tmdbPopularTV(params) { return renderAndReturn(await fetchTMDB("/tv/popular", params), "tv"); }
+async function tmdbTopRated(params) { const type = params.type || "movie"; return renderAndReturn(await fetchTMDB(`/${type}/top_rated`, params), type); }
+async function tmdbDiscoverByNetwork(params) { return renderAndReturn(await fetchTMDB("/discover/tv", params), "tv"); }
 async function tmdbDiscoverByCompany(params) { 
   const items = await fetchTMDB("/discover/movie", params);
+  const companyMap = { "420":"漫威","3":"皮克斯","2":"迪士尼","174":"华纳兄弟","4":"派拉蒙","33":"环球影业","5":"哥伦比亚","41077":"A24","34":"索尼影业" };
+  const formatted = items.filter(i=>i.poster_path && i.poster_path.trim()!=="").map(i=>({
+    id:i.id.toString(),
+    type:"tmdb",
+    mediaType:"movie",
+    title:i.title || i.original_title || i.original_title || "",
+    posterPath:IMAGE+i.poster_path,
+    backdropPath:i.backdrop_path?IMAGE+i.backdrop_path:undefined,
+    releaseDate:i.release_date||i.first_air_date,
+    rating:i.vote_average,
+    description:i.overview,
+    company:companyMap[params.with_companies]||"未知公司"
+  }));
+  renderItems(formatted);
+  return formatted;
+}
+async function tmdbTrendingToday(params) { return renderAndReturn(await fetchTMDB(`/trending/${params.media_type||'all'}/day`, params), params.media_type||"all"); }
+async function tmdbTrendingWeek(params) { return renderAndReturn(await fetchTMDB(`/trending/${params.media_type||'all'}/week`, params), params.media_type||"all"); }
 
-  const companyMap = {
-    "420": "漫威",
-    "3": "皮克斯",
-    "2": "迪士尼",
-    "174": "华纳兄弟",
-    "4": "派拉蒙",
-    "33": "环球影业",
-    "5": "哥伦比亚",
-    "41077": "A24",
-    "34": "索尼影业"
-  };
-
-  return items
-    .filter(i => i.poster_path && i.poster_path.trim() !== "")
-    .map(i => ({
-      id: i.id.toString(),
-      type: "tmdb",
-      mediaType: "movie",
-      title: i.title || i.original_title || i.name || i.original_name,
-      posterPath: IMAGE + i.poster_path,
-      backdropPath: i.backdrop_path ? IMAGE + i.backdrop_path : undefined,
-      releaseDate: i.release_date || i.first_air_date,
-      rating: i.vote_average,
-      description: i.overview,
-      company: companyMap[params.with_companies] || "未知公司"
-    }));
+// =============================
+// 渲染到页面
+// =============================
+function renderAndReturn(items, mediaType) { 
+  const formatted = formatItems(items, mediaType); 
+  renderItems(formatted); 
+  return formatted;
 }
 
-async function tmdbTrendingToday(params) {
-  const type = params.media_type || "all";
-  const items = await fetchTMDB(`/trending/${type}/day`, params);
-  return formatItems(items, type === "movie" ? "movie" : "tv");
-}
+function renderItems(items, containerId="tmdb-widget-container") {
+  let container = document.getElementById(containerId);
+  if(!container){
+    container = document.createElement("div");
+    container.id = containerId;
+    container.style.display = "grid";
+    container.style.gridTemplateColumns = "repeat(auto-fill, minmax(120px,1fr))";
+    container.style.gap = "12px";
+    container.style.padding = "10px";
+    document.body.appendChild(container);
+  }
+  container.innerHTML = "";
 
-async function tmdbTrendingWeek(params) {
-  const type = params.media_type || "all";
-  const items = await fetchTMDB(`/trending/${type}/week`, params);
-  return formatItems(items, type === "movie" ? "movie" : "tv");
+  items.forEach(item=>{
+    const card=document.createElement("div");
+    card.style.borderRadius="8px";
+    card.style.overflow="hidden";
+    card.style.background="#fff";
+    card.style.boxShadow="0 2px 8px rgba(0,0,0,0.15)";
+    card.style.display="flex";
+    card.style.flexDirection="column";
+    card.style.cursor="pointer";
+    card.style.transition="transform 0.2s";
+    card.onmouseenter=()=>card.style.transform="scale(1.05)";
+    card.onmouseleave=()=>card.style.transform="scale(1)";
+
+    const img=document.createElement("img");
+    img.src=item.posterPath;
+    img.alt=item.title;
+    img.style.width="100%";
+    img.style.height="180px";
+    img.style.objectFit="cover";
+    card.appendChild(img);
+
+    const title=document.createElement("div");
+    title.innerText=item.title;
+    title.style.fontSize="14px";
+    title.style.fontWeight="500";
+    title.style.margin="6px 6px 0 6px";
+    title.style.overflow="hidden";
+    title.style.textOverflow="ellipsis";
+    title.style.whiteSpace="nowrap";
+    card.appendChild(title);
+
+    const info=document.createElement("div");
+    info.innerText=`${item.mediaType.toUpperCase()} | ⭐ ${item.rating}`;
+    info.style.fontSize="12px";
+    info.style.color="#555";
+    info.style.margin="0 6px 6px 6px";
+    card.appendChild(info);
+
+    container.appendChild(card);
+  });
 }
