@@ -1,6 +1,6 @@
 const TMDB_API_KEY = "ae39b54fe21d657c5f535174b11f8a82";
 const BASE_URL = "https://api.themoviedb.org/3";
-const IMAGE = "https://image.tmdb.org/t/p/w500";
+const IMAGE = "https://image.tmdb.org/t/p/";
 
 // =============================
 var WidgetMetadata = {
@@ -8,7 +8,7 @@ var WidgetMetadata = {
   title: "TMDB资源模块",
   description: "趋势、热榜、平台一站式的资源模块",
   author: "白馆长",
-  version: "0.0.4",
+  version: "0.0.6",
   requiredVersion: "0.0.1",
 
   modules: [
@@ -141,7 +141,7 @@ async function fetchTMDB(endpoint, params = {}) {
 }
 
 // =============================
-// 数据格式化函数（保留全局原逻辑）
+// 数据格式化函数（非趋势模块：海报带剧名，减少请求）
 // =============================
 function formatItems(items, mediaType) {
   return items
@@ -164,7 +164,7 @@ function formatItems(items, mediaType) {
         id: i.id.toString(),
         type: "tmdb",
         mediaType: mediaType || i.media_type || (i.title ? "movie" : "tv"),
-        title: title,
+        title,
         posterPath: IMAGE + "w500" + i.poster_path,
         backdropPath: i.backdrop_path ? IMAGE + "w1280" + i.backdrop_path : undefined,
         releaseDate: i.release_date || i.first_air_date,
@@ -230,7 +230,7 @@ async function tmdbDiscoverByCompany(params) {
 }
 
 // =============================
-// 今日/本周趋势模块（方案 A：直接用接口自带大图）
+// 今日/本周趋势模块（方案 A：直接用大图）
 // =============================
 async function tmdbTrendingToday(params) {
   const type = params.media_type || "all";
