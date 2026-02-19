@@ -8,9 +8,8 @@ var WidgetMetadata = {
   title: "TMDB资源模块",
   description: "趋势、热榜、平台一站式的资源模块",
   author: "白馆长",
-  version: "0.0.8",
+  version: "0.0.9",
   requiredVersion: "0.0.1",
-
   modules: [
     { 
       title: "TMDB 今日趋势",
@@ -103,31 +102,6 @@ var WidgetMetadata = {
 };
 
 // =============================
-// TMDB 类型映射
-// =============================
-const genreMap = {
-  28: "动作",
-  12: "冒险",
-  16: "动画",
-  35: "喜剧",
-  80: "犯罪",
-  99: "纪录",
-  18: "剧情",
-  10751: "家庭",
-  14: "奇幻",
-  36: "历史",
-  27: "恐怖",
-  10402: "音乐",
-  9648: "悬疑",
-  10749: "爱情",
-  878: "科幻",
-  10770: "电视电影",
-  53: "惊悚",
-  10752: "战争",
-  37: "西部"
-};
-
-// =============================
 // 拼接 URL
 // =============================
 function buildUrl(endpoint, params) {
@@ -166,34 +140,60 @@ async function fetchTMDB(endpoint, params = {}) {
 }
 
 // =============================
-// 格式化函数：年份旁显示类型
+// 类型映射
 // =============================
-function formatItems(items, mediaType) {
+const genreMap = {
+  28: "动作", 12: "冒险", 16: "动画", 35: "喜剧", 80: "犯罪", 99: "纪录片",
+  18: "剧情", 10751: "家庭", 14: "奇幻", 36: "历史", 27: "恐怖",
+  10402: "音乐", 9648: "悬疑", 10749: "爱情", 878: "科幻",
+  10770: "电视电影", 53: "惊悚", 10752: "战争", 37: "西部"
+};
+
+// =============================
+// 日期与类型格式化
+// =============================
+function formatDateAndType(item, cardStyle) {
+  const dateStr = item.release_date || item.first_air_date || "";
+  const genres = item.genre_ids || [];
+  const typeStr = genres.length ? '·' + genres.map(g => genreMap[g] || g).join('·') : '';
+  if (cardStyle === "Backdrop") {
+    // 横版：年份 + 类型
+    const yyyy = dateStr ? dateStr.slice(0,4) : "未知";
+    return yyyy + typeStr;
+  } else {
+    // 竖版：完整日期，不显示类型
+    return dateStr || "未知";
+  }
+}
+
+// =============================
+// 通用数据格式化
+// =============================
+function formatItems(items, mediaType, cardStyle="Poster") {
   return items
-    .filter(i => i.poster_path && i.poster_path.trim() !== "" && i.media_type !== "person")
+    .filter(i => i.poster_path || i.backdrop_path)
     .map(i => {
       let title = '';
       switch (i.media_type) {
-        case 'movie': title = i.title || i.original_title; break;
-        case 'tv': title = i.name || i.original_name; break;
-        default: title = i.title || i.name || i.original_title || i.original_name;
+        case 'movie':
+          title = i.title || i.original_title;
+          break;
+        case 'tv':
+          title = i.name || i.original_name;
+          break;
+        default:
+          title = i.title || i.name || i.original_title || i.original_name;
       }
       title = title || "未知";
-
-      // 拼接年份+类型
-      let year = (i.release_date || i.first_air_date || "").slice(0,4);
-      let typeStr = (i.genre_ids || []).map(id=>genreMap[id]).filter(Boolean).join('·');
-      let yearWithType = year;
-      if(typeStr) yearWithType += '·' + typeStr;
 
       return {
         id: i.id.toString(),
         type: "tmdb",
         mediaType: mediaType || i.media_type || (i.title ? "movie" : "tv"),
         title,
-        posterPath: IMAGE + "w500" + i.poster_path,
+        posterPath: IMAGE + "w500" + (i.poster_path || ""),
         backdropPath: i.backdrop_path ? IMAGE + "w1280" + i.backdrop_path : undefined,
-        releaseDate: yearWithType,
+        releaseDate: formatDateAndType(i, cardStyle),
         rating: i.vote_average,
         description: i.overview
       };
@@ -201,72 +201,62 @@ function formatItems(items, mediaType) {
 }
 
 // =============================
-// 各模块函数
+// 模块函数实现
 // =============================
 async function tmdbPopularMovies(params) { 
   const items = await fetchTMDB("/movie/popular", params); 
-  return formatItems(items, "movie"); 
+  return formatItems(items, "movie", "Poster"); 
 }
 
 async function tmdbPopularTV(params) { 
   const items = await fetchTMDB("/tv/popular", params); 
-  return formatItems(items, "tv"); 
+  return formatItems(items, "tv", "Poster"); 
 }
 
 async function tmdbTopRated(params) { 
   const type = params.type || "movie"; 
   const items = await fetchTMDB(`/${type}/top_rated`, params); 
-  return formatItems(items, type); 
+  return formatItems(items, type, "Poster"); 
 }
 
 async function tmdbDiscoverByNetwork(params) { 
   const items = await fetchTMDB("/discover/tv", params); 
-  return formatItems(items, "tv"); 
+  return formatItems(items, "tv", "Poster"); 
 }
 
 async function tmdbDiscoverByCompany(params) { 
   const items = await fetchTMDB("/discover/movie", params);
-
   const companyMap = {
     "420": "漫威","3": "皮克斯","2": "迪士尼","174": "华纳兄弟","4": "派拉蒙",
     "33": "环球影业","5": "哥伦比亚","41077": "A24","34": "索尼影业"
   };
-
   return items
-    .filter(i => i.poster_path && i.poster_path.trim() !== "")
-    .map(i => {
-      let title = i.title || i.original_title || i.name || i.original_name || "未知";
-      let year = (i.release_date || i.first_air_date || "").slice(0,4);
-      let typeStr = (i.genre_ids || []).map(id=>genreMap[id]).filter(Boolean).join('·');
-      let yearWithType = year;
-      if(typeStr) yearWithType += '·' + typeStr;
-
-      return {
-        id: i.id.toString(),
-        type: "tmdb",
-        mediaType: "movie",
-        title,
-        posterPath: IMAGE + "w500" + i.poster_path,
-        backdropPath: i.backdrop_path ? IMAGE + "w1280" + i.backdrop_path : undefined,
-        releaseDate: yearWithType,
-        rating: i.vote_average,
-        description: i.overview,
-        company: companyMap[params.with_companies] || params.with_companies || "未知公司"
-      };
-    });
+    .filter(i => i.poster_path)
+    .map(i => ({
+      id: i.id.toString(),
+      type: "tmdb",
+      mediaType: "movie",
+      title: i.title || i.original_title || i.name || i.original_name,
+      posterPath: IMAGE + "w500" + i.poster_path,
+      backdropPath: i.backdrop_path ? IMAGE + "w1280" + i.backdrop_path : undefined,
+      releaseDate: i.release_date || i.first_air_date,
+      rating: i.vote_average,
+      description: i.overview,
+      company: companyMap[params.with_companies] || params.with_companies || "未知公司"
+    }));
 }
 
 // =============================
-// 趋势模块
+// 今日/本周趋势模块
 // =============================
 async function tmdbTrendingToday(params) {
   const type = params.media_type || "all";
   const items = await fetchTMDB(`/trending/${type}/day`, params);
-  return formatItems(items, type);
+  return formatItems(items, type, "Backdrop"); // 横版大图
 }
 
 async function tmdbTrendingWeek(params) {
   const type = params.media_type || "all";
   const items = await fetchTMDB(`/trending/${type}/week`, params);
-  return formatItems(items, type);
+  return formatItems(items, type, "Backdrop"); // 横版大图
 }
