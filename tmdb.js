@@ -8,7 +8,7 @@ var WidgetMetadata = {
   title: "TMDB资源模块",
   description: "趋势、热榜、平台一站式的资源模块",
   author: "白馆长",
-  version: "0.0.6",
+  version: "0.0.7",
   requiredVersion: "0.0.1",
   modules: [
     { 
