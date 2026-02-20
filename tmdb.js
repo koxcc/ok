@@ -3,7 +3,7 @@ WidgetMetadata = {
   title: "TMDB资源模块",
   description: "趋势、热榜、平台一站式的模块资源",
   author: "Hakuna Matata",
-  version: "0.0.2",
+  version: "0.0.3",
   requiredVersion: "0.0.2",
   detailCacheDuration: 60,
   modules: [
